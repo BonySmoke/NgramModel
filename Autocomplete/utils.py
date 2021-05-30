@@ -45,12 +45,17 @@ def tokenize_raw_text(raw_text_path: str, token_text_path: str) -> None:
     :return: None
     """
     with open(raw_text_path, encoding='utf-8') as read_handle, open(token_text_path, 'w') as write_handle:
-        for paragraph in read_handle:
-            paragraph = replace_characters(paragraph.lower())
+        text = get_raw_text(raw_text_path)
+        text = replace_characters(text.lower())
 
-            for tokenized_text in generate_tokenized_sentences(paragraph):
-                write_handle.write(' '.join(tokenized_text))
-                write_handle.write('\n')
+        for tokenized_text in generate_tokenized_sentences(text):
+            write_handle.write(' '.join(tokenized_text))
+            write_handle.write('\n')
+
+def get_raw_text(file_path) -> str:
+    with open(file_path, "r", encoding='utf-8') as f:
+        text = [line.strip() for line in f.readlines()]
+    return ' '.join(text)
 
 def word_ngrams(text, n=2, stop=False):
     '''
@@ -68,4 +73,3 @@ def word_ngrams(text, n=2, stop=False):
     ngrams = [' '.join(ngram) for ngram in z]
 
     yield ngrams
-    

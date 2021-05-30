@@ -5,7 +5,6 @@ My own ngrams implementation
 '''
 
 def generate_ngrams(text, n_gram=2, stop=True):
-
     '''
     N-gram generator
     '''

@@ -32,5 +32,5 @@ print(model.counts['sun']) # the number of ngrams with a word
 #2
 print(model.score('sun')) # the probability of a word
 #0.031746031746031744
-print(model.generate(20, random_seed=7)) # generate random sents
+print(model.generate(20, random_seed=10)) # generate random sents
 #['shining.', 'bright', 'outside.']
