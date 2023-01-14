@@ -1,8 +1,7 @@
-from nltk.util import ngrams
 from .utils import get_tokenized_sentences, word_ngrams
-from itertools import islice
 from math import log2
 import random
+
 
 class NgramCounter:
 
@@ -15,9 +14,9 @@ class NgramCounter:
         '''
         self.file_path = file_path
         self.ngram_len = ngram_len
-        self.counts = dict() # num of ngrams
-        self.tokens = 0 #num of words in the text
-        self.ngrams = list() # the list of all ngrams
+        self.counts = dict()  # num of ngrams
+        self.tokens = 0  # num of words in the text
+        self.ngrams = list()  # the list of all ngrams
 
     def count(self):
         '''
@@ -46,20 +45,25 @@ class NgramCounter:
 
         return self.counts
 
+
 class NgramModel:
 
     def __init__(self, ngram_counter: NgramCounter):
 
-        #text comparison
+        # text comparison
         self.probs = dict()
         self.ngram_counter = ngram_counter
-        self.counts = ngram_counter.counts.copy() # the count of each word in a dictionary
-        self.counts['[UNKNOWN]'] = 0 # the sign of the words that are not in a dictionary
-        self.known_words = set(ngram_counter.counts.keys()) # all unique words in a NgramCounter
-        self.vocabulary_size = len(self.known_words) # the num of words in the NgramCounter
+        # the count of each word in a dictionary
+        self.counts = ngram_counter.counts.copy()
+        # the sign of the words that are not in a dictionary
+        self.counts['[UNKNOWN]'] = 0
+        # all unique words in a NgramCounter
+        self.known_words = set(ngram_counter.counts.keys())
+        # the num of words in the NgramCounter
+        self.vocabulary_size = len(self.known_words)
 
-        #text generation
-        self.context = dict() # dictionary that keeps list of candidate words given context
+        # text generation
+        self.context = dict()  # dictionary that keeps list of candidate words given context
         self.ngrams = ngram_counter.ngrams
 
     def train(self, k):
@@ -69,10 +73,11 @@ class NgramModel:
             Laplace smoothing. Used for unknown ngrams
         '''
         for key, value in self.counts.items():
-            prob_nom = value + k # probability numerator
-            prob_denom = self.ngram_counter.tokens + k * self.vocabulary_size # probability denominator
+            prob_nom = value + k  # probability numerator
+            prob_denom = self.ngram_counter.tokens + k * \
+                self.vocabulary_size  # probability denominator
             self.probs[key] = prob_nom / prob_denom
-        
+
         return self.probs
 
     def estimate_word_probability(self, text_evaluation: NgramCounter):
@@ -85,28 +90,29 @@ class NgramModel:
 
         for key, value in self.text_evaluation.items():
             if key not in self.known_words:
-                key = self.unknown_unigram_sign # if the word is not in the train model
-            train_prob = self.probs[key] # the word probability in train model
+                key = self.unknown_unigram_sign  # if the word is not in the train model
+            train_prob = self.probs[key]  # the word probability in train model
             log_likelihood = value * log2(train_prob)
             test_log_likelihood += log_likelihood
 
         avg_test_log_likelihood = test_log_likelihood / text_evaluation.tokens
         return avg_test_log_likelihood
 
-    def update_context(self, num_of_chains:int) -> list:
+    def update_context(self, num_of_chains: int) -> list:
         '''
         Find all the possible ngram continuations
         e.g. "the day":["was", "has"...]
-        
+
         :params num_of_chains: - int: the length of ngrams:
         :return dictionary: the vocabulary with the ngrams and their continuations
         '''
         ngrams = self.ngrams
 
         for i in range(len(ngrams)-1):
-            prev_words = ngrams[i] # get the current ngram
-            next_word = ngrams[i+1].split()[num_of_chains-1:] # next ngram without the words from prev_words
-            
+            prev_words = ngrams[i]  # get the current ngram
+            # next ngram without the words from prev_words
+            next_word = ngrams[i+1].split()[num_of_chains-1:]
+
             if prev_words in self.context:
                 self.context[prev_words].append(''.join(next_word))
             else:
@@ -126,7 +132,7 @@ class NgramModel:
 
         except KeyError:
             probability = 0.0
-        
+
         return probability
 
     def random_word(self, context: str):
@@ -147,60 +153,73 @@ class NgramModel:
 
         for token in related_tokens:
             tokens_probs[token] = self.context_prob(context, token)
-        
+
         for token in sorted(tokens_probs):
             total += tokens_probs[token]
             if total > r:
                 return token
-        
-        return random.choice(related_tokens) # random token if no token was returned
 
-    def choose_random_ngram(self, context_word:str=None)->str:
+        # random token if no token was returned
+        return random.choice(related_tokens)
+
+    def choose_random_ngram(self, context: str) -> str:
         '''
         Choose a random ngram containing the context word
-        :param contaxt_word str: a random word
-        :return str: an ngram containing the context_word
+        :param contaxt str: a random (sequence of) word(s)
+        :return str: an ngram containing the context
         '''
-
+        context = context.lower()
         try:
-            if context_word is not None:
-                if len(context_word.split()) > self.ngram_counter.ngram_len:
-                    return f'The context word(s) should not exceed {self.ngram_counter.ngram_len}', False
+            if len(context.split()) > self.ngram_counter.ngram_len:
+                error = f'The context word(s) should not exceed {self.ngram_counter.ngram_len}'
+                raise Exception(error)
 
-                ngram = random.choice([n for n in self.ngram_counter.counts.keys() if context_word in n])
-            else:
-                return 'Please provide a valid word', False
+            ngram = random.choice(
+                [n for n in self.ngram_counter.counts.keys()
+                 if n.startswith(context)])
 
-            return str(ngram), True
+            return str(ngram)
         except Exception as e:
             print(e.args[0])
-            return 'The n-gram containing the word(s) not found. Please provide another n-gram.', False
+            return 'The n-gram containing the word(s) not found. Please provide another n-gram.'
 
-    def generate_text(self, target_word: str, number_of_chains: int):
+    def generate_text(self, target_words: str, number_of_sents: int):
         '''
         Generate Text
         :param target_word: the beginning of the sentence
         :param number_of_chains: number of sequences to be generated
         :return: text
         '''
-        n = self.ngram_counter.ngram_len # len of ngram
-        context_sequence = target_word.split()
-        output = [target_word]
-        
-        for _ in range(number_of_chains):
-            
-            word = self.random_word(context_sequence)
-            output.append(word)
-            if n > 1:
-                context_sequence.pop(0)
-                
-                context_sequence.append(word)
-                        
-            if '[end]' in word:
-                output = output[:-1]
-                context_sequence = random.choice([n for n in self.ngram_counter.counts.keys() if '[end]' not in n])
+        n = self.ngram_counter.ngram_len  # len of ngram
+        context = self.choose_random_ngram(target_words)
+        context_sequence = context.split()
+
+        sents = []
+
+        sent = [context]
+
+        allowed_iter = 100
+        current_iter = 0
+        while len(sents) != number_of_sents and allowed_iter >= current_iter:
+            # empty sentence
+            if not sent:
+                context_sequence = random.choice(
+                    [n for n in self.ngram_counter.counts.keys()
+                     if '[end]' not in n])
                 context_sequence = context_sequence.split()
-            
-            # print(context_sequence, word)
-        
-        return ' '.join(output)
+
+            word = self.random_word(context_sequence)
+            sent.append(word)
+            if n > 1:
+                # drop the first word from the context
+                context_sequence.pop(0)
+
+                context_sequence.append(word)
+
+            if '[end]' in word:
+                sents.append(f"{' '.join(sent)}.")
+                sent = []
+
+            current_iter += 1
+
+        return ' '.join(sents)
