@@ -1,6 +1,7 @@
 from nltk.corpus import stopwords
 from nltk import RegexpTokenizer, sent_tokenize
 
+
 def get_tokenized_sentences(file: str):
     '''
     Tokenize one sentence at a time in a file
@@ -9,8 +10,9 @@ def get_tokenized_sentences(file: str):
     '''
     with open(file, 'r') as f:
         for sentence in f.read().splitlines():
-            token_sentence = sentence.lower().split( )
+            token_sentence = sentence.lower().split()
             yield token_sentence
+
 
 def generate_tokenized_sentences(paragraph: str):
     """
@@ -26,6 +28,7 @@ def generate_tokenized_sentences(paragraph: str):
             tokenized_sentence.append('[END]')
             yield tokenized_sentence
 
+
 def replace_characters(text: str) -> str:
     """
     Replace punctuations that can mess up sentence tokenizers
@@ -37,6 +40,7 @@ def replace_characters(text: str) -> str:
         text = text.replace(symbol, replacement)
     return text
 
+
 def tokenize_raw_text(raw_text_path: str, token_text_path: str) -> None:
     """
     Read a input text file and write its content to an output text file in the form of tokenized sentences
@@ -44,18 +48,21 @@ def tokenize_raw_text(raw_text_path: str, token_text_path: str) -> None:
     :param token_text_path: path of tokenized output text file
     :return: None
     """
-    with open(raw_text_path, encoding='utf-8') as read_handle, open(token_text_path, 'w') as write_handle:
-        text = get_raw_text(raw_text_path)
+    with open(raw_text_path, encoding='utf-8') as read_handle, \
+            open(token_text_path, 'w') as write_handle:
+        text = get_raw_text(read_handle)
         text = replace_characters(text.lower())
 
         for tokenized_text in generate_tokenized_sentences(text):
             write_handle.write(' '.join(tokenized_text))
             write_handle.write('\n')
 
+
 def get_raw_text(file_path) -> str:
     with open(file_path, "r", encoding='utf-8') as f:
         text = [line.strip() for line in f.readlines()]
     return ' '.join(text)
+
 
 def word_ngrams(text, n=2, stop=False):
     '''
