@@ -50,7 +50,7 @@ def tokenize_raw_text(raw_text_path: str, token_text_path: str) -> None:
     """
     with open(raw_text_path, encoding='utf-8') as read_handle, \
             open(token_text_path, 'w') as write_handle:
-        text = get_raw_text(raw_text_path)
+        text = get_raw_text(read_handle)
         text = replace_characters(text.lower())
 
         for tokenized_text in generate_tokenized_sentences(text):

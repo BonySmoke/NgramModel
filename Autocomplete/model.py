@@ -5,7 +5,7 @@ import random
 
 class NgramCounter:
 
-    def __init__(self, file_path, ngram_len=1):
+    def __init__(self, file_path: str = 'data/tokenized_emma', ngram_len=2):
         '''
         :params file_path: file
             the path to the file
@@ -66,6 +66,8 @@ class NgramModel:
         self.context = dict()  # dictionary that keeps list of candidate words given context
         self.ngrams = ngram_counter.ngrams
 
+        self.update_context()
+
     def train(self, k):
         '''
         Count the probability of each dictionary word in a training corpus
@@ -98,15 +100,15 @@ class NgramModel:
         avg_test_log_likelihood = test_log_likelihood / text_evaluation.tokens
         return avg_test_log_likelihood
 
-    def update_context(self, num_of_chains: int) -> list:
+    def update_context(self) -> list:
         '''
         Find all the possible ngram continuations
         e.g. "the day":["was", "has"...]
 
-        :params num_of_chains: - int: the length of ngrams:
         :return dictionary: the vocabulary with the ngrams and their continuations
         '''
         ngrams = self.ngrams
+        num_of_chains = self.ngram_counter.ngram_len
 
         for i in range(len(ngrams)-1):
             prev_words = ngrams[i]  # get the current ngram
@@ -135,18 +137,24 @@ class NgramModel:
 
         return probability
 
-    def random_word(self, context: str):
+    def random_word(self, context: list) -> str:
         '''
         Given the context, build the word sequence
         e.g. day way -> grey = day was grey
-        :param context: the context word
+        :param context: the context word(s)
         :return:
         '''
         r = random.random()
         cont = ' '.join(context)
-        related_tokens = self.context[cont]
         tokens_probs = {}
         total = int()
+
+        if cont not in self.context:
+            raise KeyError(
+                f"Context '{cont}' does not have a candidate word"
+            )
+
+        related_tokens = self.context[cont]
 
         if len(related_tokens) > 1 and '[end]' in related_tokens:
             related_tokens.remove('[end]')
@@ -183,11 +191,12 @@ class NgramModel:
             print(e.args[0])
             return 'The n-gram containing the word(s) not found. Please provide another n-gram.'
 
-    def generate_text(self, target_words: str, number_of_sents: int):
+    def generate_text(self, target_words: str, number_of_sents: int) -> str:
         '''
         Generate Text
         :param target_word: the beginning of the sentence
         :param number_of_chains: number of sequences to be generated
+            with the given context
         :return: text
         '''
         n = self.ngram_counter.ngram_len  # len of ngram
@@ -198,14 +207,14 @@ class NgramModel:
 
         sent = [context]
 
-        allowed_iter = 100
+        # iterations are set to prevent creating text that loops over itself
+        allowed_iter = 5000
         current_iter = 0
-        while len(sents) != number_of_sents and allowed_iter >= current_iter:
-            # empty sentence
+        while (len(sents) != number_of_sents
+               and allowed_iter >= current_iter):
+            # choose a random ngram from the target if sentence is empty
             if not sent:
-                context_sequence = random.choice(
-                    [n for n in self.ngram_counter.counts.keys()
-                     if '[end]' not in n])
+                context_sequence = self.choose_random_ngram(target_words)
                 context_sequence = context_sequence.split()
 
             word = self.random_word(context_sequence)
@@ -217,9 +226,16 @@ class NgramModel:
                 context_sequence.append(word)
 
             if '[end]' in word:
-                sents.append(f"{' '.join(sent)}.")
+                complete: str = " ".join(sent)
+                complete = f'{complete.partition("[end]")[0].strip()}.'.capitalize(
+                )
+                sents.append(complete)
                 sent = []
 
             current_iter += 1
+
+            if current_iter == allowed_iter:
+                raise Exception(
+                    f"Could not construct text in {allowed_iter} iterations")
 
         return ' '.join(sents)
