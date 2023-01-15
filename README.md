@@ -4,7 +4,7 @@ A simple ngram model to generate text
 # Introduction
 The project is based on the incredible [work](https://medium.com/mti-technology/n-gram-language-models-70af02e742ad) by Khanh Nguyen.
 
-This is a simple ngram model that can generate sequences of text (not logical) based on probability of word appearence in the given context.
+This is a simple ngram model that can generate sequences of text (not logical) based on probability of word appearance in the given context.
 
 # Usage
 Below is the snippet of how the module can be used
